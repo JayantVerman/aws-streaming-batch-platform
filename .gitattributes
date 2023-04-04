@@ -1,0 +1,4 @@
+# Normalize source code, but never touch the raw sample data files —
+# they're headerless delimited text and CRLF conversion would shift parsing.
+* text=auto
+data/** -text
