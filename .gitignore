@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environment / secrets
+.env
+*.local
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+override.tf
+override.tf.json
+
+# Airflow
+airflow.db
+logs/
+*.pid
+
+# Spark
+*.log
+spark-warehouse/
+metastore_db/
+derby.log
+checkpoints/
+
+# Great Expectations
+data_quality/great_expectations/uncommitted/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+.DS_Store
+
+# Docker
+*.pid
+docker-compose.override.yml
+
+# Local data outputs (sample source data is committed; generated lake data is not)
+data/lake/
+data/quarantine/
