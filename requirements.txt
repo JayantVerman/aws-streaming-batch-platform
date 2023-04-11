@@ -1,0 +1,12 @@
+# Runtime dependencies — 2023-era pins (see PROJECT_STATE.md conventions).
+boto3==1.29.7
+botocore==1.32.7
+fastavro==1.9.2
+PyYAML==6.0.1
+# Bronze streaming jobs. Needs Java 17 on the host; when running inside the
+# docker stack the bitnami/spark:3.5.0 image already bundles a compatible JRE.
+pyspark==3.5.0
+# Data quality suites (bronze + silver). Execution wiring lands in Phase 9.
+great-expectations==0.18.8
+# Optional zero-install dashboard (viz/streamlit_app). 2023 pin.
+streamlit==1.29.0
