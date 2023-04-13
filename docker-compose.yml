@@ -1,0 +1,355 @@
+# Local development stack for aws-streaming-batch-platform.
+#
+# AWS path note: everything below stands in for real AWS services. S3/MinIO and
+# Kinesis/LocalStack swap is endpoint-configuration only — no code change.
+# All image versions are 2023-era releases (project timeline, see PROJECT_STATE.md).
+
+name: aws-streaming-batch-platform
+
+x-airflow-common: &airflow-common
+  # Built from orchestration/airflow/Dockerfile: adds a Spark 3.5.0 client +
+  # Java 17 so SparkSubmitOperator can submit the batch jobs in-process.
+  build:
+    context: ./orchestration/airflow
+  image: platform-airflow:2.7.3-spark3.5
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://platform:platform@postgres:5432/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    # SparkSubmitOperator connection: the stack's Spark master (client mode)
+    AIRFLOW_CONN_SPARK_DEFAULT: "spark://spark-master:7077"
+    # Airflow emits statsd metrics (dag run success/failure, task durations);
+    # prom/statsd-exporter converts them to Prometheus on the wire.
+    AIRFLOW__METRICS__STATSD_HOST: statsd-exporter
+    AIRFLOW__METRICS__STATSD_PORT: "9125"
+    AIRFLOW__METRICS__STATSD_ON: "true"
+    AIRFLOW__METRICS__STATSD_PREFIX: airflow
+    # Warehouse load job (gold -> serving schema); secret via env per policy
+    WAREHOUSE_PASSWORD: platform
+  volumes:
+    - ./orchestration/airflow/dags:/opt/airflow/dags:ro
+    - ./:/opt/project:ro
+    - spark-ivy:/home/airflow/.ivy2   # cache resolved spark packages
+  depends_on:
+    postgres:
+      condition: service_healthy
+    spark-master:
+      condition: service_started
+  networks:
+    - platform-net
+
+services:
+  localstack:
+    # Emulates Kinesis, S3, IAM (community edition).
+    # Glue Schema Registry emulation is limited in LocalStack Community — local runs
+    # use the schema-file validation shim in streaming/schemas/registry_shim.py instead.
+    image: localstack/localstack:2.3
+    container_name: platform-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: kinesis,s3,iam,sts
+      DEBUG: "0"
+    volumes:
+      - localstack-data:/var/lib/localstack
+      - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/localstack-init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:4566/_localstack/health | grep -q kinesis"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - platform-net
+
+  minio:
+    # S3-compatible object store for the local data lake (bronze/silver/gold).
+    image: minio/minio:RELEASE.2023-09-30T07-02-29Z
+    container_name: platform-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio-data:/data
+    networks:
+      - platform-net
+
+  minio-init:
+    # One-shot: create the lake + checkpoint buckets, then exit.
+    image: minio/mc:RELEASE.2023-10-14T01-57-03Z
+    container_name: platform-minio-init
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 minioadmin minioadmin >/dev/null 2>&1; do
+        echo 'waiting for minio...'; sleep 2;
+      done;
+      mc mb --ignore-existing local/lake;
+      mc mb --ignore-existing local/checkpoints;
+      echo 'minio buckets ready';
+      "
+    networks:
+      - platform-net
+
+  postgres:
+    # Serves two roles locally: Airflow metadata DB and the Redshift stand-in
+    # warehouse (same SQL/DDL as the Redshift path, see warehouse/ddl/).
+    image: postgres:16.1
+    container_name: platform-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: platform
+      POSTGRES_PASSWORD: platform
+      POSTGRES_DB: warehouse
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U platform -d warehouse"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - platform-net
+
+  spark-master:
+    image: bitnami/spark:3.5.0
+    container_name: platform-spark-master
+    environment:
+      SPARK_MODE: master
+      # Spark 3.5 native Prometheus UI metrics at :8080/metrics/prometheus
+      SPARK_DAEMON_JAVA_OPTS: "-Dspark.ui.prometheus.enabled=true"
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    networks:
+      - platform-net
+
+  spark-worker:
+    image: bitnami/spark:3.5.0
+    container_name: platform-spark-worker
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_WORKER_MEMORY: 2G
+      SPARK_WORKER_CORES: 2
+      # Worker Prometheus UI at :8081/metrics/prometheus
+      SPARK_DAEMON_JAVA_OPTS: "-Dspark.ui.prometheus.enabled=true"
+    ports:
+      - "8081:8081"
+    depends_on:
+      - spark-master
+    networks:
+      - platform-net
+
+  # Bronze streaming jobs: Kinesis (LocalStack) -> Avro decode -> Iceberg on
+  # MinIO. One long-running container per streaming entity; all Spark config
+  # (jars, catalog, s3a) comes from config/settings.yaml via the job itself.
+  spark-stream-orders:
+    image: bitnami/spark:3.5.0
+    container_name: platform-spark-stream-orders
+    working_dir: /opt/project
+    ports:
+      - "4040:4040"   # driver UI (client mode) — Prometheus metrics at /metrics/prometheus
+    volumes:
+      - ./:/opt/project:ro
+      - spark-ivy:/opt/bitnami/spark/ivy
+    environment:
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_DEFAULT_REGION: us-east-1
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_S3A_ENDPOINT: http://minio:9000
+      SPARK_KINESIS_ENDPOINT: http://localstack:4566
+    command: ["bash", "scripts/run_bronze_stream.sh", "--entity", "orders"]
+    depends_on:
+      spark-master:
+        condition: service_started
+      localstack:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    networks:
+      - platform-net
+
+  spark-stream-order-items:
+    image: bitnami/spark:3.5.0
+    container_name: platform-spark-stream-order-items
+    working_dir: /opt/project
+    ports:
+      - "4041:4040"   # driver UI (client-mode) — scrapable metrics at /metrics/prometheus
+    volumes:
+      - ./:/opt/project:ro
+      - spark-ivy:/opt/bitnami/spark/ivy
+    environment:
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_DEFAULT_REGION: us-east-1
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_S3A_ENDPOINT: http://minio:9000
+      SPARK_KINESIS_ENDPOINT: http://localstack:4566
+    command: ["bash", "scripts/run_bronze_stream.sh", "--entity", "order_items"]
+    depends_on:
+      spark-master:
+        condition: service_started
+      localstack:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    networks:
+      - platform-net
+
+  spark-batch:
+    # On-demand batch runner (bronze->silver->gold, dimension loads). Started
+    # only with --profile batch; Airflow DAGs will drive it from Phase 5.
+    #   docker compose run --rm spark-batch \
+    #     scripts/run_batch_job.sh batch/spark_batch_jobs/bronze_to_silver.py \
+    #     --entity orders
+    image: bitnami/spark:3.5.0
+    container_name: platform-spark-batch
+    profiles: ["batch"]
+    working_dir: /opt/project
+    volumes:
+      - ./:/opt/project:ro
+      - spark-ivy:/opt/bitnami/spark/ivy
+    environment:
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_DEFAULT_REGION: us-east-1
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_S3A_ENDPOINT: http://minio:9000
+      WAREHOUSE_PASSWORD: platform
+    command: ["sleep", "infinity"]
+    depends_on:
+      spark-master:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+    networks:
+      - platform-net
+
+  airflow-init:
+    # One-shot: migrate metadata DB and create the admin user, then exit.
+    <<: *airflow-common
+    container_name: platform-airflow-init
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username admin --password admin \
+          --firstname Jayant --lastname Admin \
+          --role Admin --email admin@example.local || true
+        echo 'airflow ready'
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: platform-airflow-scheduler
+    command: scheduler
+    restart: unless-stopped
+
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: platform-airflow-webserver
+    command: webserver
+    ports:
+      - "8081:8080"
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+    restart: unless-stopped
+
+  trino:
+    # Local stand-in for Athena; Iceberg catalog mounted from
+    # infra/envs/local/trino/ — query lake.retail* / lake.retail_gold.* here.
+    image: trinodb/trino:433
+    container_name: platform-trino
+    ports:
+      - "8089:8080"
+    volumes:
+      - ./infra/envs/local/trino:/etc/trino/catalog:ro
+    networks:
+      - platform-net
+
+  prometheus:
+    image: prom/prometheus:v2.47.2
+    container_name: platform-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus:ro
+    networks:
+      - platform-net
+
+  statsd-exporter:
+    # Airflow's metrics go to statsd; this converts them to Prometheus.
+    image: prom/statsd-exporter:v0.24.0
+    container_name: platform-statsd-exporter
+    ports:
+      - "9102:9102"      # prometheus scrape endpoint
+    expose:
+      - "9125/udp"       # statsd input (Airflow sends here)
+    networks:
+      - platform-net
+
+  loki:
+    # Log aggregation (promtail ships container logs here).
+    image: grafana/loki:2.9.5
+    container_name: platform-loki
+    command: -config.file=/etc/loki/loki.yml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki:/etc/loki:ro
+      - loki-data:/loki
+    networks:
+      - platform-net
+
+  promtail:
+    image: grafana/promtail:2.9.5
+    container_name: platform-promtail
+    command: -config.file=/etc/promtail/promtail.yml
+    volumes:
+      - ./monitoring/promtail:/etc/promtail:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    networks:
+      - platform-net
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: platform-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - platform-net
+
+networks:
+  platform-net:
+    driver: bridge
+
+volumes:
+  localstack-data:
+  minio-data:
+  postgres-data:
+  grafana-data:
+  loki-data:
+  spark-ivy:            # cache resolved spark packages across container restarts
