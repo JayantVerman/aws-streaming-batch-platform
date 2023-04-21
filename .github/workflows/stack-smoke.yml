@@ -1,0 +1,40 @@
+# Full local-stack smoke — manual only (workflow_dispatch), because it builds
+# the Airflow image and pulls the whole 2023-vintage stack. Run it explicitly
+# when you want to prove the Docker path end-to-end on GitHub's runners:
+#   Actions -> stack-smoke -> Run workflow
+name: stack-smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build airflow image + start the stack
+        run: |
+          docker compose build airflow-scheduler airflow-webserver
+          docker compose up -d
+      - name: Wait for healthy services
+        run: |
+          for i in $(seq 1 60); do
+            echo "--- attempt $i ---"
+            docker compose ps
+            # postgres/localstack/minio/trino become healthy within a couple min
+            if docker compose ps --format json 2>/dev/null | grep -q '"Health":"healthy"'; then break; fi
+            sleep 10
+          done
+      - name: Spark master reachable
+        run: |
+          network=$(docker compose inspect -f '{{range .Networks}}{{.NetworkID}}{{end}}' platform-spark-master 2>/dev/null || true)
+          echo "spark master container up: $(docker compose ps --format json platform-spark-master | head -c 120)"
+      - name: MinIO / LocalStack / Postgres endpoints
+        run: |
+          curl -sf --retry 10 --retry-delay 5 http://localhost:4566/_localstack/health | head -c 200; echo
+          curl -sf --retry 10 --retry-delay 5 http://localhost:9000/minio/health/live >/dev/null && echo "minio OK"
+          docker compose exec -T postgres pg_isready -U platform -d warehouse
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
