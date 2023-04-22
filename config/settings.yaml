@@ -1,0 +1,69 @@
+# Central settings. Everything parameterizable lives here or on the CLI —
+# no hardcoded endpoints/paths/names in code. ENV=local uses LocalStack/MinIO;
+# ENV=aws swaps to real endpoints (see .env.example and docs/).
+env: local
+
+sources:
+  local_base_path: data/sample_raw/retail_db
+
+lake:
+  bucket: lake
+  bronze_prefix: bronze
+  silver_prefix: silver
+  gold_prefix: gold
+  quarantine_prefix: quarantine
+
+streaming:
+  kinesis:
+    # ONE STREAM PER STREAMING ENTITY — the Spark consumer needs its schema
+    # upfront (from_avro), so a single mixed-schema stream would be undecodable.
+    stream_name_template: retail-{entity}
+    shards: 1                # demo-sized; keep minimal on real AWS (cost!)
+    local_endpoint: http://localhost:4566
+  schema_registry:
+    # auto -> real Glue Schema Registry when ENV=aws, file shim when local
+    mode: auto
+    local_schemas_dir: streaming/schemas
+    registry_name: retail-schemas
+
+producer:
+  default_records_per_sec: 200
+  state_dir: data/state          # per-entity watermark files
+  quarantine_dir: data/quarantine  # rows that fail validation, JSONL
+  max_retries: 5
+  backoff_base_seconds: 0.5
+
+warehouse:
+  # Serving layer target. ENV=local: the Postgres stand-in; ENV=aws: swap
+  # jdbc_url/driver to Redshift Serverless (same DDL, see warehouse/ddl/).
+  # Same SQL/DDL works on both — only connection parameters move.
+  schema: serving
+  driver: org.postgresql.Driver
+  jdbc_url: jdbc:postgresql://postgres:5432/warehouse
+  user: platform
+  password_env: WAREHOUSE_PASSWORD   # secret comes from env, never this file
+  jdbc_package: org.postgresql:postgresql:42.6.0
+
+spark:
+  # Bronze streaming jobs. Jars/versions are 2023-pinned (see PROJECT_STATE.md):
+  #   - iceberg-spark-runtime 1.4.2  (Oct 2023, last 2023 release for Spark 3.5)
+  #   - hadoop-aws 3.3.4 + aws-java-sdk-bundle 1.12.262 (match Spark 3.5.0's Hadoop)
+  #   - Kinesis Structured Streaming connector 1.0.0 (7 Dec 2023, format "aws-kinesis")
+  app_prefix: bronze-stream
+  trigger_interval: 10 seconds     # micro-batch cadence
+  starting_position: TRIM_HORIZON  # a fresh checkpoint reads the whole stream
+  packages:
+    - org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.4.2
+    - org.apache.hadoop:hadoop-aws:3.3.4
+    - com.amazonaws:aws-java-sdk-bundle:1.12.262
+  kinesis_connector_jar: https://awslabs-code-us-east-1.s3.amazonaws.com/spark-sql-kinesis-connector/spark-streaming-sql-kinesis-connector_2.12-1.0.0.jar
+  catalog_name: lake
+  namespace: retail
+  warehouse: s3a://lake/warehouse
+  checkpoints_bucket: checkpoints
+  cluster_master: spark://spark-master:7077
+  local_master: local[2]
+  # Endpoints below are the IN-CONTAINER view (docker network). Host-side runs
+  # override via env: SPARK_S3A_ENDPOINT / SPARK_KINESIS_ENDPOINT / SPARK_MASTER_URL.
+  s3_endpoint: http://minio:9000
+  aws_region: us-east-1
