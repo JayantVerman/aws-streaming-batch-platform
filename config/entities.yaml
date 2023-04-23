@@ -1,0 +1,86 @@
+# Entity contract for the retail_db source.
+#
+# These files are headerless delimited text — the column order defined here IS
+# the source column order. Adding a new source entity = adding a block here.
+# Column order changes are a breaking schema change and must go through the
+# Avro schema + registry (streaming/schemas/), not be patched silently.
+#
+# delivery: streaming -> replayed into Kinesis by the producer (facts)
+#           batch     -> loaded by the batch/backfill path (dimensions)
+
+entities:
+  orders:
+    file: orders/part-00000
+    delimiter: ","
+    columns:
+      order_id: long
+      order_date: timestamp
+      order_customer_id: long
+      order_status: string
+    business_key: order_id
+    incremental_column: order_date
+    delivery: streaming
+    avro_schema: orders
+
+  order_items:
+    file: order_items/part-00000
+    delimiter: ","
+    columns:
+      order_item_id: long
+      order_item_order_id: long
+      order_item_product_id: long
+      order_item_quantity: int
+      order_item_subtotal: double
+      order_item_product_price: double
+    business_key: order_item_id
+    incremental_column: order_item_id
+    delivery: streaming
+    avro_schema: order_items
+
+  customers:
+    file: customers/part-00000
+    delimiter: ","
+    columns:
+      customer_id: long
+      customer_fname: string
+      customer_lname: string
+      customer_email: string
+      customer_password: string
+      customer_street: string
+      customer_city: string
+      customer_state: string
+      customer_zipcode: string
+    business_key: customer_id
+    delivery: batch
+
+  products:
+    file: products/part-00000
+    delimiter: ","
+    columns:
+      product_id: long
+      product_category_id: long
+      product_name: string
+      product_description: string
+      product_price: double
+      product_image: string
+    business_key: product_id
+    delivery: batch
+
+  categories:
+    file: categories/part-00000
+    delimiter: ","
+    columns:
+      category_id: long
+      category_department_id: long
+      category_name: string
+    business_key: category_id
+    delivery: batch
+
+  departments:
+    file: departments/part-00000
+    delimiter: ","
+    columns:
+      department_id: long
+      department_name: string
+    business_key: department_id
+    delivery: batch
