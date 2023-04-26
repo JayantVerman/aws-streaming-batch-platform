@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "order",
+  "namespace": "com.jayant.retail",
+  "doc": "Order fact streamed to Kinesis. order_date is ISO-8601 (YYYY-MM-DDTHH:MM:SS). order_status is deliberately a string, not an enum — new statuses arrive without a registry bump.",
+  "fields": [
+    {"name": "order_id", "type": "long", "doc": "Business key, unique per order"},
+    {"name": "order_date", "type": "string", "doc": "Order timestamp, ISO-8601"},
+    {"name": "order_customer_id", "type": "long", "doc": "FK to customers.customer_id"},
+    {"name": "order_status", "type": "string", "doc": "e.g. CLOSED, PENDING_PAYMENT, COMPLETE"}
+  ]
+}
