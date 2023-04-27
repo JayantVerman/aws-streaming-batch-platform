@@ -1,0 +1,14 @@
+{
+  "type": "record",
+  "name": "order_item",
+  "namespace": "com.jayant.retail",
+  "doc": "Order line fact streamed to Kinesis. No timestamp at source — incremental loads use order_item_id as the cursor.",
+  "fields": [
+    {"name": "order_item_id", "type": "long", "doc": "Business key, unique per order line"},
+    {"name": "order_item_order_id", "type": "long", "doc": "FK to orders.order_id"},
+    {"name": "order_item_product_id", "type": "long", "doc": "FK to products.product_id"},
+    {"name": "order_item_quantity", "type": "int", "doc": "Units ordered"},
+    {"name": "order_item_subtotal", "type": "double", "doc": "Line subtotal"},
+    {"name": "order_item_product_price", "type": "double", "doc": "Unit price at purchase time"}
+  ]
+}
