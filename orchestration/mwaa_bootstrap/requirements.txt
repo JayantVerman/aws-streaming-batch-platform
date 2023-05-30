@@ -1,0 +1,6 @@
+# MWAA requirements (phase 5 handoff).
+#
+# MWAA installs these WITH the Airflow constraints file for its version —
+# pin providers that exist in the constraints, never loose transitive deps:
+#   see https://docs.aws.amazon.com/mwaa/latest/userguide/working-datasets-dependencies.html
+apache-airflow-providers-apache-spark==4.1.2
