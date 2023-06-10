@@ -1,0 +1,15 @@
+# Copy to terraform.tfvars and fill in. The core (streams, lake, registry,
+# IAM) applies with defaults — only the gated services need extra inputs.
+region      = "us-east-1"
+project     = "retail"
+environment = "dev"
+
+# Flip to true and provide VPC inputs to provision the heavy services.
+deploy_emr      = false
+# emr_subnet_id = "subnet-abc123"
+
+deploy_mwaa           = false
+# mwaa_subnet_ids         = ["subnet-a1", "subnet-b2"]   # >=2 private subnets
+# mwaa_security_group_ids = ["sg-111"]
+
+deploy_redshift = false
