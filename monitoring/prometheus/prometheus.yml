@@ -1,0 +1,45 @@
+# Prometheus scrape config — Phase 8.
+
+# Scrape surface (all 2023-era versions, see docker-compose.yml):
+#   - prometheus (self)
+#   - localstack :4566/metrics         (CloudWatch emulation -> kinesis/s3 metrics)
+#   - spark-master :8080/metrics/prometheus  (spark.ui.prometheus.enabled=true)
+#   - spark-worker :8081/metrics/prometheus
+#   - statsd-exporter :9102            (Airflow statsd -> prometheus)
+#   - minio :9000/minio/v2/metrics/node
+#   - trino: 433 exposes JMX, not a native /metrics — wire the jmx_exporter if
+#     you need Trino panels (or query the jmx catalog in Trino directly).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files: []
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: localstack
+    static_configs:
+      - targets: ["localstack:4566"]
+    metrics_path: /metrics
+
+  - job_name: spark-master
+    static_configs:
+      - targets: ["spark-master:8080"]
+    metrics_path: /metrics/prometheus
+
+  - job_name: spark-worker
+    static_configs:
+      - targets: ["spark-worker:8081"]
+    metrics_path: /metrics/prometheus
+
+  - job_name: statsd-exporter
+    static_configs:
+      - targets: ["statsd-exporter:9102"]
+
+  - job_name: minio
+    metrics_path: /minio/v2/metrics/node   # node metrics are unauthenticated
+    static_configs:
+      - targets: ["minio:9000"]
