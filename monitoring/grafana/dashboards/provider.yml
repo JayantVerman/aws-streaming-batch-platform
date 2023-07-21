@@ -1,0 +1,10 @@
+# Grafana dashboard provisioning: load every *.json in this folder.
+apiVersion: 1
+
+providers:
+  - name: platform
+    folder: platform
+    type: file
+    disableDeletion: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
