@@ -1,0 +1,75 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "fieldConfig": { "defaults": { "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "targets": [
+        { "datasource": { "type": "postgres", "uid": "postgres" }, "format": "table", "rawSql": "SELECT COUNT(*) AS total FROM serving.daily_sales", "refId": "A" }
+      ],
+      "title": "Gold rows: daily_sales",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "fieldConfig": { "defaults": { "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "targets": [
+        { "datasource": { "type": "postgres", "uid": "postgres" }, "format": "table", "rawSql": "SELECT MAX(order_date) AS last_order_date FROM serving.daily_sales", "refId": "A" }
+      ],
+      "title": "Freshness (max order_date)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "fieldConfig": { "defaults": { "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
+      "targets": [
+        { "datasource": { "type": "postgres", "uid": "postgres" }, "format": "table", "rawSql": "SELECT COALESCE(SUM(total_orders), 0)::bigint AS total_orders FROM serving.daily_sales", "refId": "A" }
+      ],
+      "title": "Total orders (all time)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "fieldConfig": { "defaults": { "custom": { "drawing": "bars", "fillOpacity": 60 }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } }, "overrides": [] },
+      "gridPos": { "h": 11, "w": 12, "x": 0, "y": 8 },
+      "id": 4,
+      "targets": [
+        { "datasource": { "type": "postgres", "uid": "postgres" }, "format": "time_series", "rawSql": "SELECT order_date AS time, total_revenue AS value FROM serving.daily_sales WHERE $__timeFilter(order_date) ORDER BY order_date", "refId": "A" }
+      ],
+      "title": "Revenue per day",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } }, "overrides": [] },
+      "gridPos": { "h": 11, "w": 12, "x": 12, "y": 8 },
+      "id": 5,
+      "targets": [
+        { "datasource": { "type": "postgres", "uid": "postgres" }, "format": "table", "rawSql": "SELECT category_name, total_items, total_revenue FROM serving.category_sales ORDER BY total_revenue DESC LIMIT 8", "refId": "A" }
+      ],
+      "title": "Top categories",
+      "type": "table"
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": ["platform", "warehouse", "data-quality"],
+  "templating": { "list": [] },
+  "time": { "from": "2013-01-01T00:00:00.000Z", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Warehouse Health & DQ",
+  "uid": "warehouse-health",
+  "version": 1
+}
