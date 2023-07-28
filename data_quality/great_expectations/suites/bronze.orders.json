@@ -1,0 +1,14 @@
+{
+  "data_asset_type": null,
+  "expectation_suite_name": "bronze.orders",
+  "expectations": [
+    {"expectation_type": "expect_table_row_count_to_be_between", "kwargs": {"min_value": 1}, "meta": {}},
+    {"expectation_type": "expect_column_values_to_not_be_null", "kwargs": {"column": "order_id"}, "meta": {}},
+    {"expectation_type": "expect_column_values_to_not_be_null", "kwargs": {"column": "order_date"}, "meta": {}},
+    {"expectation_type": "expect_column_values_to_not_be_null", "kwargs": {"column": "order_customer_id"}, "meta": {}},
+    {"expectation_type": "expect_column_values_to_not_be_null", "kwargs": {"column": "order_status"}, "meta": {}},
+    {"expectation_type": "expect_column_values_to_match_strftime_format", "kwargs": {"column": "order_date", "strftime_format": "%Y-%m-%dT%H:%M:%S"}, "meta": {"note": "bronze keeps order_date as the raw ISO string"}}
+  ],
+  "ge_cloud_id": null,
+  "meta": {"layer": "bronze", "entity": "orders", "great_expectations_version": "0.18.8", "note": "run within a batch; bronze may hold replay duplicates across micro-batches, so uniqueness is enforced at silver"}
+}
