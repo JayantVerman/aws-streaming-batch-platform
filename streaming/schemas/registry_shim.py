@@ -123,3 +123,5 @@ def get_registry(
             region_name=os.getenv("AWS_REGION", "us-east-1"),
         )
     return LocalSchemaRegistry(schemas_dir or "streaming/schemas")
+
+# wip138
