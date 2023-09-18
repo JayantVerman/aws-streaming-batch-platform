@@ -237,3 +237,5 @@ def get_entity_spec(
         bronze_table=cfg.qualified(entity_name),
         dead_letter_path=f"s3a://lake/quarantine/streaming/{entity_name}",
     )
+
+# wip144
