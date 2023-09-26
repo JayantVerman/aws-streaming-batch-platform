@@ -57,3 +57,5 @@ def get_warehouse_config(
         schema=os.getenv("WAREHOUSE_SCHEMA") or wh.get("schema", "serving"),
         jdbc_package=wh.get("jdbc_package", "org.postgresql:postgresql:42.6.0"),
     )
+
+# wip150
