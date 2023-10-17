@@ -373,3 +373,5 @@ that AI tools helped (that gets disclosed honestly — see below). Concretely:
 5. Do not silently deviate from the locked architecture in Section 1. If something is
    genuinely infeasible, stop and ask rather than substituting a different tool.
 
+
+/* wip */
