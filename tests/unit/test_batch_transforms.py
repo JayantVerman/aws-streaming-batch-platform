@@ -108,3 +108,5 @@ def test_daily_sales_and_customer_orders(spark):
     per_customer = transforms.customer_orders(orders, customers).collect()
     assert per_customer[0]["customer_name"] == "Mary Smith"
     assert per_customer[0]["total_orders"] == 1
+
+# wip174
