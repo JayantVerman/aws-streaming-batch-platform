@@ -57,3 +57,5 @@ def test_wrong_type_rejected(registry):
 def test_unknown_schema_raises_keyerror(registry):
     with pytest.raises(KeyError):
         registry.get_schema("does_not_exist")
+
+/* wip */
