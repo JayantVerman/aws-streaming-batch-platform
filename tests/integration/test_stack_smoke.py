@@ -73,3 +73,4 @@ def test_trino_up():
     except Exception as exc:  # noqa: BLE001 — integration env probe
         pytest.fail(f"trino not reachable: {exc}")
     assert '"starting":false' in body or "node" in body
+/* wip */
