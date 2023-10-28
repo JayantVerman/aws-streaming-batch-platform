@@ -45,3 +45,5 @@ if [ "$failures" -gt 0 ]; then
   exit 1
 fi
 echo "[smoke] all checks passed"
+
+# wip178
