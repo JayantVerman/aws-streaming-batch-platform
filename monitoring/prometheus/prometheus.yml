@@ -45,3 +45,5 @@ scrape_configs:
       - targets: ["minio:9000"]
 
 # wip160
+
+/* wip */

@@ -38,3 +38,5 @@ def ensure_namespace(spark: SparkSession, cfg: SparkJobConfig, namespace: str) -
     spark.sql(f"CREATE NAMESPACE IF NOT EXISTS {cfg.catalog_name}.{namespace}")
 
 /* wip */
+
+/* wip */

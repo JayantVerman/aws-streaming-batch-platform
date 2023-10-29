@@ -15,3 +15,5 @@ resource "aws_kinesis_stream" "stream" {
   tags = merge(var.tags, { Name = each.value })
 }
 /* wip */
+
+/* wip */

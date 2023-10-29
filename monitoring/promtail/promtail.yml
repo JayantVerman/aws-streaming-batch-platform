@@ -20,3 +20,5 @@ scrape_configs:
         regex: "(.*)"
         target_label: compose_service
 # wip162
+
+/* wip */

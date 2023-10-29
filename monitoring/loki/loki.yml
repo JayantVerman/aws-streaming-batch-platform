@@ -31,3 +31,5 @@ limits_config:
 compactor:
   working_directory: /loki/compactor
 /* wip */
+
+/* wip */
