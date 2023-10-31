@@ -124,6 +124,3 @@ def get_registry(
         )
     return LocalSchemaRegistry(schemas_dir or "streaming/schemas")
 
-# wip138
-
-/* wip */

@@ -88,6 +88,3 @@ module "redshift" {
   publicly_accessible = false
   tags              = { Name = "retail-redshift" }
 }
-/* wip */
-
-/* wip */

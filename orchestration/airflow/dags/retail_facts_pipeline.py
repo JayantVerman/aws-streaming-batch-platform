@@ -59,6 +59,3 @@ with DAG(
         sla=timedelta(minutes=15),
     )
 
-/* wip */
-
-/* wip */

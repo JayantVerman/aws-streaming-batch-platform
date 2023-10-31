@@ -354,6 +354,3 @@ volumes:
   loki-data:
   spark-ivy:            # cache resolved spark packages across container restarts
 
-/* wip */
-
-/* wip */

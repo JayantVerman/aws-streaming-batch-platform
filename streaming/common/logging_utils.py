@@ -33,6 +33,3 @@ def get_logger(name: str) -> logging.Logger:
         logging.getLogger("_platform_root_configured").addHandler(logging.NullHandler())
     return logger
 
-# wip140
-
-/* wip */

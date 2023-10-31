@@ -58,6 +58,3 @@ def get_warehouse_config(
         jdbc_package=wh.get("jdbc_package", "org.postgresql:postgresql:42.6.0"),
     )
 
-# wip150
-
-/* wip */

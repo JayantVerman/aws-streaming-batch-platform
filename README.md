@@ -147,6 +147,3 @@ the per-phase READMEs before provisioning.*
 [trino]: https://trino.io/
 [localstack]: https://localstack.cloud/
 
-# wip166
-
-/* wip */

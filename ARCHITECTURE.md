@@ -488,6 +488,3 @@ ARCHITECTURE file keeps per-phase decision logs so any later maintainer can see
 *why* a pin, a connector version, or a wiring choice was made — not just that it
 was.
 
-/* wip */
-
-/* wip */

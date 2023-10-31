@@ -33,6 +33,3 @@ repos:
     hooks:
       - id: terraform_fmt
 
-/* wip */
-
-/* wip */

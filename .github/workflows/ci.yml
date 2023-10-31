@@ -89,6 +89,3 @@ jobs:
       - name: compose services announced
         run: docker compose -f docker-compose.yml config --services | sort
 
-# wip136
-
-/* wip */

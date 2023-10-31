@@ -221,6 +221,3 @@ checkpoint + §5A contribution-graph commits).
 - Stream-per-entity (retail-{entity}) replaces the single retail-orders stream —
   required by per-stream Avro schema binding; documented in ARCHITECTURE.md Phase 3.
 
-# wip168
-
-/* wip */

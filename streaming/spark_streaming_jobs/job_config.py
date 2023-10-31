@@ -238,6 +238,3 @@ def get_entity_spec(
         dead_letter_path=f"s3a://lake/quarantine/streaming/{entity_name}",
     )
 
-# wip144
-
-/* wip */

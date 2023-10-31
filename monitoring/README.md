@@ -45,6 +45,3 @@ docker compose ps                        # prometheus, loki, promtail, grafana h
 open http://localhost:9090/targets       # every target UP (excluding trino scrape)
 open http://localhost:3000               # admin/admin → the two dashboards
 ```
-/* wip */
-
-/* wip */

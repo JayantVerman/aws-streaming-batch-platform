@@ -104,6 +104,3 @@ def read_records(
             if limit is not None and count >= limit:
                 return
 
-# wip142
-
-/* wip */

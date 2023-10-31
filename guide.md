@@ -374,6 +374,3 @@ that AI tools helped (that gets disclosed honestly — see below). Concretely:
    genuinely infeasible, stop and ask rather than substituting a different tool.
 
 
-/* wip */
-
-/* wip */

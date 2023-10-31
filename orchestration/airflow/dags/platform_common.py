@@ -78,6 +78,3 @@ def spark_batch_task(dag, task_id: str, job_name: str, args: list[str] | None = 
         sla=sla or DEFAULT_ALERT_TIMEOUT,
     )
 
-# wip152
-
-/* wip */
