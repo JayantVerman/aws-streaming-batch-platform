@@ -354,3 +354,4 @@ volumes:
   loki-data:
   spark-ivy:            # cache resolved spark packages across container restarts
 
+# generated 2023-10-31: post-MWAA-bootstrap finalization pass
